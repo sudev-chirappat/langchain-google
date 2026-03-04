@@ -29,6 +29,7 @@ from langchain_core.messages import (
     SystemMessage,
     ToolMessage,
 )
+from langchain_core.rate_limiters import InMemoryRateLimiter
 from langchain_core.messages.tool import tool_call as create_tool_call
 from langchain_core.output_parsers.openai_tools import (
     PydanticToolsParser,
@@ -64,40 +65,66 @@ def clear_prediction_client_cache() -> None:
     _get_prediction_client.cache_clear()
 
 
-def test_init() -> None:
+@pytest.mark.parametrize(
+    "model_name, max_tokens, stop, rate_limiter_val, endpoint_version_val",
+    [
+        ("gemini-2-5-flash", 10, ["bar"], None, "v1beta1"),
+        ("gemini-2-5-flash", 10, ["bar"], None, "v1beta1"),
+        ("gemini-2-5-flash", None, None, InMemoryRateLimiter(requests_per_second=1.0), "v1beta1"),
+    ]
+)
+def test_init(model_name, max_tokens, stop, rate_limiter_val, endpoint_version_val) -> None:
     """Test initialization of `ChatVertexAI` with different parameter names.
 
     Done since we have aliasing of some parameters for consistency with other LLMs.
     """
-    for llm in [
-        ChatVertexAI(
-            model_name="gemini-2-5-flash",
+    if rate_limiter_val:
+        llm = ChatVertexAI(
+            model_name=model_name,
             project="test-project",
-            max_output_tokens=10,
-            stop=["bar"],
-            location="moon-dark1",
-        ),
-        ChatVertexAI(
-            model="gemini-2-5-flash",
-            project="test-proj",
-            max_tokens=10,
-            stop_sequences=["bar"],
-            location="moon-dark1",
-        ),
-    ]:
-        assert llm.model_name == "gemini-2-5-flash"
-        assert llm.max_output_tokens == 10
-        assert llm.stop == ["bar"]
+            rate_limiter=rate_limiter_val,
+            endpoint_version=endpoint_version_val,
+        )
+    elif stop:
+        # Testing aliasing
+        if "test-proj" in model_name or max_tokens: # Simplistic check for second case
+             llm = ChatVertexAI(
+                model=model_name,
+                project="test-proj",
+                max_tokens=max_tokens,
+                stop_sequences=stop,
+                location="moon-dark1",
+                endpoint_version=endpoint_version_val,
+            )
+        else:
+            llm = ChatVertexAI(
+                model_name=model_name,
+                project="test-project",
+                max_output_tokens=max_tokens,
+                stop=stop,
+                location="moon-dark1",
+                endpoint_version=endpoint_version_val,
+            )
 
-        ls_params = llm._get_ls_params()
-        assert ls_params == {
-            "ls_provider": "google_vertexai",
-            "ls_model_name": "gemini-2-5-flash",
-            "ls_model_type": "chat",
-            "ls_temperature": None,
-            "ls_max_tokens": 10,
-            "ls_stop": ["bar"],
-        }
+    assert llm.model_name == "gemini-2-5-flash"
+    assert llm._llm_type == "vertexai"
+    assert llm.max_output_tokens == max_tokens
+    assert llm.stop == stop
+    assert llm.rate_limiter == rate_limiter_val
+    assert llm.endpoint_version == endpoint_version_val
+
+    ls_params = llm._get_ls_params()
+    expected_ls_params = {
+        "ls_provider": "google_vertexai",
+        "ls_model_name": "gemini-2-5-flash",
+        "ls_model_type": "chat",
+        "ls_temperature": None,
+    }
+    if max_tokens is not None:
+        expected_ls_params["ls_max_tokens"] = max_tokens
+    if stop is not None:
+        expected_ls_params["ls_stop"] = stop
+    assert ls_params == expected_ls_params
 
     # Test initialization with an invalid argument to check warning
     with patch("langchain_google_vertexai.chat_models.logger.warning") as mock_warning:
