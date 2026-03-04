@@ -101,22 +101,6 @@ def _check_tool_calls(response: BaseMessage, expected_name: str) -> None:
     assert tool_call["args"] == {"age": 27.0, "name": "Erick"}
 
 
-@pytest.mark.release
-@pytest.mark.parametrize("model_name", model_names_to_test)
-@pytest.mark.parametrize("endpoint_version", endpoint_versions)
-def test_initialization(model_name: str | None, endpoint_version: str) -> None:
-    """Test `ChatVertexAI` initialization.
-
-    TODO: why is this a integration test?
-    """
-    model = ChatVertexAI(
-        model_name=model_name,
-        rate_limiter=RATE_LIMITER,
-        endpoint_version=endpoint_version,
-    )
-    assert model._llm_type == "vertexai"
-
-
 @pytest.mark.xfail(reason="can't create service account key on gcp")
 @pytest.mark.release
 def test_init_from_credentials_obj() -> None:
