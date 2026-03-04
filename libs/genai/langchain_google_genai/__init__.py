@@ -46,13 +46,19 @@ from langchain_google_genai._enums import (
 )
 from langchain_google_genai.chat_models import ChatGoogleGenerativeAI
 from langchain_google_genai.embeddings import GoogleGenerativeAIEmbeddings
+from langchain_google_genai.images import GoogleGenAIImageModel
+from langchain_google_genai.interactions import GoogleGenAIInteractions
 from langchain_google_genai.llms import GoogleGenerativeAI
 from langchain_google_genai.utils import create_context_cache
+from langchain_google_genai.videos import GoogleGenAIVideoModel
 
 __all__ = [
     "ChatGoogleGenerativeAI",
     "ComputerUse",
     "Environment",
+    "GoogleGenAIImageModel",
+    "GoogleGenAIInteractions",
+    "GoogleGenAIVideoModel",
     "GoogleGenerativeAI",
     "GoogleGenerativeAIEmbeddings",
     "HarmBlockThreshold",
